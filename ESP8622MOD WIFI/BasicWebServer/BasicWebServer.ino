@@ -1,88 +1,68 @@
-#include <FS.h>
 #include <ESP8266WiFi.h>
 
-String ssid, password;
+// Replace with your network credentials
+const char* ssid = "ABC123";
+const char* password = "ABC123";
+
+WiFiServer server(80);
 
 void setup() {
-  // Initialize serial communication
   Serial.begin(115200);
-
-  // Initialize SPIFFS
-  if (!SPIFFS.begin()) {
-    Serial.println("Failed to mount file system");
-    return;
-  }
-
-  // Read configuration
-  readConfig(ssid, password);
-
-  // Debug output
-  Serial.println("Configuration:");
-  Serial.print("SSID: s");
-  Serial.print(ssid);
-  Serial.println("s");
-  Serial.print("Password: ");
-  Serial.println(password);
-
-  // Uncomment this line to connect to Wi-Fi after debugging
-  // if (ssid.length() > 0 && password.length() > 0) {
-  //   connectToWiFi(ssid, password);
-  // }
-}
-
-void loop() {
-  // Main code here
-  // If you want to debug values continuously, you can use this code
-  // but be cautious of flooding the serial monitor
-  Serial.println("Configuration:");
-  Serial.print("SSID: s");
-  Serial.print(ssid);
-  Serial.println("s");
-  Serial.print("Password: ");
-  Serial.println(password);
-  delay(5000); // Delay to avoid flooding
-}
-
-void readConfig(String &ssid, String &password) {
-  File file = SPIFFS.open("/config.ini", "r");
-  if (!file) {
-    Serial.println("Failed to open config file");
-    return;
-  }
-
-  while (file.available()) {
-    String line = file.readStringUntil('\n');
-    Serial.print("Read line: ");
-    Serial.println(line); // Debug: print the line read from the file
-    parseConfig(line, ssid, password);
-  }
-  file.close();
-}
-
-void parseConfig(String line, String &ssid, String &password) {
-  int separatorIndex = line.indexOf('=');
-  if (separatorIndex != -1) {
-    String key = line.substring(0, separatorIndex);
-    String value = line.substring(separatorIndex + 1);
-
-    if (key == "ssid") {
-      ssid = value;
-    } else if (key == "password") {
-      password = value;
-    }
-  }
-}
-
-void connectToWiFi(String ssid, String password) {
-  WiFi.begin(ssid.c_str(), password.c_str());
+  delay(10000);
+  
+  // Connect to Wi-Fi network
+  Serial.println();
   Serial.print("Connecting to ");
-  Serial.print(ssid);
-  Serial.print("...");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\nConnected to Wi-Fi");
-  Serial.print("IP Address: ");
+  
+  Serial.println("");
+  Serial.println("WiFi connected.");
+  Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+  
+  // Start the server
+  server.begin();
+  Serial.println("Server started");
+}
+
+void loop() {
+  // Check if a client has connected
+  WiFiClient client = server.available();
+  if (!client) {
+    return;
+  }
+  
+  // Wait until the client sends some data
+  Serial.println("New Client.");
+  while(!client.available()){
+    delay(1);
+  }
+  
+  // Read the first line of the request
+  String req = client.readStringUntil('\r');
+  Serial.println(req);
+  client.flush();
+  
+  // Match the request
+  if (req.indexOf("/LED=ON") != -1) {
+    // Handle LED ON
+  }
+  if (req.indexOf("/LED=OFF") != -1) {
+    // Handle LED OFF
+  }
+  
+  // Prepare the response
+  String s = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE HTML>\r\n<html>Hello World!</html>\r\n";
+  
+  // Send the response to the client
+  client.print(s);
+  delay(1);
+  Serial.println("Client disonnected");
+  Serial.println("");
 }
